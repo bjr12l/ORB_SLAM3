@@ -22,26 +22,26 @@ int main() {
     for (auto &timestamp : vTimeStamps) {
         timestamp -= time_difference;
     }
-
     
     // Get the frames per second and calculate the time interval between frames
     int fps = cap.get(cv::CAP_PROP_FPS);
     float dT = 1.f / fps;
 
-    ORB_SLAM3::System SLAM("Vocabulary/ORBvoc.txt", "Examples/k2.yaml", ORB_SLAM3::System::IMU_MONOCULAR, false);
+    ORB_SLAM3::System SLAM("Vocabulary/ORBvoc.txt", "Examples/k2.yaml", ORB_SLAM3::System::IMU_MONOCULAR, true);
     float imageScale = SLAM.GetImageScale();
 
-    cap.set(cv::CAP_PROP_POS_MSEC, (10 * 60 * 1000) + (47 * 1000));
-
     size_t imu_data_idx = 0;
-    double video_start_time = 10 * 60 + 47; // 10 minutes and 47 seconds in seconds
+    double video_start_time = 3 * 60 + 47; // 10 minutes and 47 seconds in seconds
 
-    while (imu_data_idx < vTimeStamps.size() && vTimeStamps[imu_data_idx] < video_start_time) {
+    while (vTimeStamps[imu_data_idx] < video_start_time) {
         imu_data_idx++;
     }
 
+    cap.set(cv::CAP_PROP_POS_MSEC, video_start_time * 1000);
+
     cv::Mat im;
-    for (int i = 0; i < 5000; i++) {
+    vector<ORB_SLAM3::IMU::Point> vImuData;
+    for (int i = 0; i < 1000; i++) {
         cap.read(im);
 
         // Get timestamp from video
@@ -49,20 +49,26 @@ int main() {
 
         // Resize the image if needed
         if (imageScale != 1.f) {
-            cv::resize(im, im, cv::Size(), imageScale, imageScale);
+            int width = im.cols * imageScale;
+            int height = im.rows * imageScale;
+            cv::resize(im, im, cv::Size(width, height));
         }
 
         // Process and synchronize IMU data
-        std::vector<ORB_SLAM3::IMU::Point> vIMUData;
+        vImuData.clear();
 
-        while (imu_data_idx < vTimeStamps.size() && vTimeStamps[imu_data_idx] <= tframe) {
-            ORB_SLAM3::IMU::Point imuPoint(vAcc[imu_data_idx], vGyro[imu_data_idx], vTimeStamps[imu_data_idx]);
-            vIMUData.push_back(imuPoint);
+        while (vTimeStamps[imu_data_idx] <= tframe) {
+            ORB_SLAM3::IMU::Point imuPoint(
+                vAcc[imu_data_idx].x, vAcc[imu_data_idx].y, vAcc[imu_data_idx].z, 
+                vGyro[imu_data_idx].x, vGyro[imu_data_idx].y, vGyro[imu_data_idx].z,
+                vTimeStamps[imu_data_idx]
+            );
+            vImuData.push_back(imuPoint);
             imu_data_idx++;
-        }
+        };
 
         // Run the SLAM algorithm on the image and synchronized IMU data
-        SLAM.TrackMonocular(im, tframe, vIMUData);
+        SLAM.TrackMonocular(im, tframe, vImuData);
 
         // You can add cv::waitKey here if you need to control the frame processing rate
         // cv::waitKey(dT * 1000);
