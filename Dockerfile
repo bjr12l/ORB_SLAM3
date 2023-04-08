@@ -2,30 +2,40 @@
 # For more info about ORB-SLAM 3 dependencies go check https://github.com/UZ-SLAMLab/ORB_SLAM3
 FROM ubuntu:18.04
 
-    #-[] Install dependencies
-RUN apt-get update && \
-    apt-get -y upgrade && \
+ARG EIGEN_VERSION=3.3.0
+ARG PANGOLIN_VERSION=0.8
+ARG OPENCV_VERSION=4.4.0
 
+#-> Install general dependencies
+RUN apt-get update && apt-get upgrade && \
     #-> Install general usage dependencies
     echo "Installing general usage dependencies ..." && \
-    apt-get install -y apt-file && \
-    apt-file update && \
-    apt-get install -y nano \
-    pkg-config && \
+    apt-get install -y build-essential cmake apt-file git wget pkg-config && \
+    apt-file update
 
-    #-> Install OpenCV dependencies
-    #-? From : http://techawarey.com/programming/install-opencv-c-c-in-ubuntu-18-04-lts-step-by-step-guide/
-    echo "Installing OpenCV dependencies ..." && \
-    apt-get install -y\
-    libgtk2.0-dev \
-    libavcodec-dev \
-    libavformat-dev \
-    libswscale-dev \
-    software-properties-common && \
+#-[] Install Eigen 3.3.0 version
+#-? Needs to be installed BEFORE Pangolin as it also needs Eigen
+#-? Linear algebra library
+#-? Bulid crashes further down the line with version > 3.3.0 TODO: update README and Cmake
+RUN echo "Installing Eigen ${EIGEN_VERSION} version ..." && \
+    cd /opt && \
+    wget https://gitlab.com/libeigen/eigen/-/archive/$EIGEN_VERSION/eigen-$EIGEN_VERSION.tar.gz && \
+    tar -xzf eigen-$EIGEN_VERSION.tar.gz && \
+    cd eigen-$EIGEN_VERSION && \
+    mkdir build && \
+    cd build && \
+    cmake -D CMAKE_BUILD_TYPE=RELEASE .. && \
+    make install && \
+    cd ../../ && \
+    rm -rf eigen-$EIGEN_VERSION/ eigen-$EIGEN_VERSION.tar.gz
 
-    #-> Install Pangolin dependencies
+#-[] Install Pangolin 0.6 version
+#-? 3D Vizualisation tool
+#-? From : https://cdmana.com/2021/02/20210204202321078t.html
+#-? Latest version requires upgrading Eigen
+RUN echo "Installing Pangolin dependencies ..." && \
+    #-[] Install Pangolin dependencies
     #-? From : https://cdmana.com/2021/02/20210204202321078t.html
-    echo "Installing Pangolin dependencies ..." && \
     apt-get install -y \
     libglew-dev \
     libboost-dev \
@@ -35,61 +45,73 @@ RUN apt-get update && \
     libavutil-dev \
     libpng-dev && \
 
-    #-> Install Eigen 3 last version
-    #-? Needs to be installed BEFORE Pangolin as it also needs Eigen
-    #-> Linear algebra library
-    echo "Installing Eigen 3 last version ..." && \
-    apt-get install -y libeigen3-dev && \
-   
-    #-> Install Pangolin last version
-    #-? 3D Vizualisation tool
-    #-? From : https://cdmana.com/2021/02/20210204202321078t.html
     echo "Installing Pangolin last version ..." && \
-    cd /dpds/ && \
-    git clone https://github.com/stevenlovegrove/Pangolin.git Pangolin && \
-    cd /dpds/Pangolin/ && \
+    cd /opt && \
+    wget https://github.com/stevenlovegrove/Pangolin/archive/refs/tags/v$PANGOLIN_VERSION.tar.gz -O Pangolin.tar.gz && \
+    tar -xzf Pangolin.tar.gz && \
+    cd Pangolin-$PANGOLIN_VERSION/ && \
     mkdir build && \
     cd build/ && \
-    cmake -D CMAKE_BUILD_TYPE=RELEASE \
-    -DCPP11_NO_BOOST=1 \
-    /dpds/Pangolin/ && \
-    make -j4 && \
-    make install
-
-    #-[] Install OpenCV last version
-    #-? From : http://techawarey.com/programming/install-opencv-c-c-in-ubuntu-18-04-lts-step-by-step-guide/
-    #-? Another RUN command in order to free memory
-    #-? Usual computer vision library
-RUN echo "Installing OpenCV last version ..." && \
-    cd /dpds/ && \
-    git clone https://github.com/Itseez/opencv.git opencv && \
-    git clone https://github.com/Itseez/opencv_contrib.git opencv_contrib && \
-    cd opencv/ && \
-    mkdir build && \
-    cd build/ && \
-    cmake -D CMAKE_BUILD_TYPE=RELEASE \
-    -D BUILD_TIFF=ON \
-    -D WITH_CUDA=OFF \
-    -D ENABLE_AVX=OFF \
-    -D WITH_OPENGL=OFF \
-    -D WITH_OPENCL=OFF \
-    -D WITH_IPP=OFF \
-    -D WITH_TBB=ON \
-    -D BUILD_TBB=ON \
-    -D WITH_EIGEN=ON \
-    -D WITH_V4L=OFF \
-    -D WITH_VTK=OFF \
-    -D BUILD_TESTS=OFF \
-    -D BUILD_PERF_TESTS=OFF \
-    -D OPENCV_GENERATE_PKGCONFIG=ON \
-    -D OPENCV_EXTRA_MODULES_PATH=/dpds/opencv_contrib/modules \
-    /dpds/opencv/ && \
-    make -j4 && \
+    cmake -D CMAKE_BUILD_TYPE=RELEASE -D CPP11_NO_BOOST=1 .. && \
+    make -j$(nproc) && \
     make install && \
-    ldconfig
+    cd ../../ && \
+    rm -rf Pangolin-$PANGOLIN_VERSION/ Pangolin.tar.gz
 
-COPY . /dpds/ORB_SLAM3
+
+#-[] Install OpenCV last version
+#-? From : http://techawarey.com/programming/install-opencv-c-c-in-ubuntu-18-04-lts-step-by-step-guide/
+#-? Another RUN command in order to free memory
+#-? Usual computer vision library
+RUN echo "Installing OpenCV dependencies ..." && \
+    #-[] Install OpenCV dependencies
+    #-? From : https://learnopencv.com/install-opencv-3-4-4-on-ubuntu-18-04/
+    apt-get install -y \
+    ffmpeg \
+    gstreamer1.0-plugins-base \
+    libgtk-3-dev \
+    libjasper-dev \
+    libjpeg-turbo8-dev \
+    libpng-dev \
+    libtiff-dev \
+    libwebp-dev \
+    v4l-utils \
+    libxine2-dev
+    
+    echo "Installing OpenCV last version ..." && \
+    cd /opt && \
+    wget https://github.com/opencv/opencv/archive/$OPENCV_VERSION.tar.gz -O opencv-$OPENCV_VERSION.tar.gz && \
+    wget https://github.com/opencv/opencv_contrib/archive/$OPENCV_VERSION.tar.gz -O opencv_contrib-$OPENCV_VERSION.tar.gz && \
+    tar -xzf opencv-$OPENCV_VERSION.tar.gz && \
+    tar -xzf opencv_contrib-$OPENCV_VERSION.tar.gz && \
+    cd opencv-$OPENCV_VERSION && \
+    mkdir build && \
+    cd build && \
+    cmake -D CMAKE_BUILD_TYPE=RELEASE \
+          -D ENABLE_CXX11=ON \
+          -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-$OPENCV_VERSION/modules \
+          -D BUILD_TIFF=ON \
+          -D WITH_CUDA=OFF \
+          -D ENABLE_AVX=OFF \
+          -D WITH_OPENGL=OFF \
+          -D WITH_OPENCL=OFF \
+          -D WITH_IPP=OFF \
+          -D WITH_TBB=ON \
+          -D BUILD_TBB=ON \
+          -D WITH_EIGEN=ON \
+          -D WITH_V4L=OFF \
+          -D WITH_VTK=OFF \
+          -D BUILD_TESTS=OFF \
+          -D BUILD_PERF_TESTS=OFF \
+          -D OPENCV_GENERATE_PKGCONFIG=ON .. && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    cd ../.. && \
+    rm -rf opencv-$OPENCV_VERSION/ opencv_contrib-$OPENCV_VERSION/ opencv-$OPENCV_VERSION.tar.gz opencv_contrib-$OPENCV_VERSION.tar.gz
+
+COPY . /opt/ORB_SLAM3/
 
 RUN echo "Getting ORB-SLAM 3 installation ready ..." && \
-    cd /dpds/ORB_SLAM3 && \
+    cd /opt/ORB_SLAM3 && \
     ./build.sh
