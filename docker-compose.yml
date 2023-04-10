@@ -2,25 +2,29 @@ version: '3.8'
 
 services:
   dev:
-    build: .
-    image: vlados09/orb-slam-3:ubuntu18.04
-    container_name: orb-slam-dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    image: orb-slam-3:dev
+    container_name: orb-slam-3-dev
+    user: "1000:1000"
     volumes:
-      - .:/dpds/ORB_SLAM3
-      - /mnt/wslg:/mnt/wslg
-      - /tmp/.X11-unix:/tmp/.X11-unix
-    environment:
-      - DISPLAY=:0
-      - WAYLAND_DISPLAY=$WAYLAND_DISPLAY 
-      - XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR
-      - PULSE_SERVER=$PULSE_SERVER
+      - .:/home/user/ORB_SLAM3
+      # - /mnt/wslg:/mnt/wslg
+      # - /tmp/.X11-unix:/tmp/.X11-unix
+    # environment:
+    #   - DISPLAY=:0
+    #   - WAYLAND_DISPLAY=$WAYLAND_DISPLAY 
+    #   - XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR
+    #   - PULSE_SERVER=$PULSE_SERVER
     ports:
       - 8888:8888
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    command: jupyter notebook --ip 0.0.0.0 
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    tty: true
