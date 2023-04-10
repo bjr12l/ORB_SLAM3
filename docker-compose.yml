@@ -6,8 +6,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: builder
-    image: orb-slam-3:dev
-    container_name: orb-slam-3-dev
+    image: orb-slam3:dev
+    container_name: orb-slam3-dev
     user: "1000:1000"
     volumes:
       - .:/home/user/ORB_SLAM3
