@@ -1,6 +1,6 @@
 # This is a Docker file to build a Docker image with ORB-SLAM 3 and all its dependencies pre-installed
 # For more info about ORB-SLAM 3 dependencies go check https://github.com/UZ-SLAMLab/ORB_SLAM3
-FROM ubuntu:18.04
+FROM ubuntu:18.04 as base
 
 ARG EIGEN_VERSION=3.3.0
 ARG PANGOLIN_VERSION=0.8
@@ -11,25 +11,14 @@ RUN apt-get update && apt-get upgrade && \
     #-> Install general usage dependencies
     echo "Installing general usage dependencies ..." && \
     apt-get install -y build-essential cmake apt-file git wget pkg-config && \
-    apt-file update
+    apt-file update && \
+    #-> Install Eigen 3 last version
+    #-? Needs to be installed BEFORE Pangolin as it also needs Eigen
+    #-> Linear algebra library
+    echo "Installing Eigen 3 last version ..." && \
+    apt-get install -y libeigen3-dev
 
-#-[] Install Eigen 3.3.0 version
-#-? Needs to be installed BEFORE Pangolin as it also needs Eigen
-#-? Linear algebra library
-#-? Bulid crashes further down the line with version > 3.3.0 TODO: update README and Cmake
-RUN echo "Installing Eigen ${EIGEN_VERSION} version ..." && \
-    cd /opt && \
-    wget https://gitlab.com/libeigen/eigen/-/archive/$EIGEN_VERSION/eigen-$EIGEN_VERSION.tar.gz && \
-    tar -xzf eigen-$EIGEN_VERSION.tar.gz && \
-    cd eigen-$EIGEN_VERSION && \
-    mkdir build && \
-    cd build && \
-    cmake -D CMAKE_BUILD_TYPE=RELEASE .. && \
-    make install && \
-    cd ../../ && \
-    rm -rf eigen-$EIGEN_VERSION/ eigen-$EIGEN_VERSION.tar.gz
-
-#-[] Install Pangolin 0.6 version
+#-[] Install Pangolin 0.8 version
 #-? 3D Vizualisation tool
 #-? From : https://cdmana.com/2021/02/20210204202321078t.html
 #-? Latest version requires upgrading Eigen
@@ -45,38 +34,28 @@ RUN echo "Installing Pangolin dependencies ..." && \
     libavutil-dev \
     libpng-dev && \
 
-    echo "Installing Pangolin last version ..." && \
-    cd /opt && \
-    wget https://github.com/stevenlovegrove/Pangolin/archive/refs/tags/v$PANGOLIN_VERSION.tar.gz -O Pangolin.tar.gz && \
-    tar -xzf Pangolin.tar.gz && \
-    cd Pangolin-$PANGOLIN_VERSION/ && \
+    echo "Installing Pangolin ${PANGOLIN_VERSION} version ..." && \
+    cd opt/ && \
+    git clone https://github.com/stevenlovegrove/Pangolin.git Pangolin && \
+    cd Pangolin/ && \
     mkdir build && \
     cd build/ && \
     cmake -D CMAKE_BUILD_TYPE=RELEASE -D CPP11_NO_BOOST=1 .. && \
     make -j$(nproc) && \
-    make install && \
-    cd ../../ && \
-    rm -rf Pangolin-$PANGOLIN_VERSION/ Pangolin.tar.gz
-
+    make install
 
 #-[] Install OpenCV last version
 #-? From : http://techawarey.com/programming/install-opencv-c-c-in-ubuntu-18-04-lts-step-by-step-guide/
-#-? Another RUN command in order to free memory
 #-? Usual computer vision library
 RUN echo "Installing OpenCV dependencies ..." && \
     #-[] Install OpenCV dependencies
     #-? From : https://learnopencv.com/install-opencv-3-4-4-on-ubuntu-18-04/
     apt-get install -y \
-    ffmpeg \
-    gstreamer1.0-plugins-base \
+    libjpeg-dev libpng-dev libtiff-dev \
+    libavcodec-dev libavformat-dev libswscale-dev libv4l-dev \
+    libxvidcore-dev libx264-dev \
     libgtk-3-dev \
-    libjasper-dev \
-    libjpeg-turbo8-dev \
-    libpng-dev \
-    libtiff-dev \
-    libwebp-dev \
-    v4l-utils \
-    libxine2-dev
+    libatlas-base-dev gfortran && \
     
     echo "Installing OpenCV last version ..." && \
     cd /opt && \
@@ -106,12 +85,44 @@ RUN echo "Installing OpenCV dependencies ..." && \
           -D OPENCV_GENERATE_PKGCONFIG=ON .. && \
     make -j$(nproc) && \
     make install && \
-    ldconfig && \
-    cd ../.. && \
-    rm -rf opencv-$OPENCV_VERSION/ opencv_contrib-$OPENCV_VERSION/ opencv-$OPENCV_VERSION.tar.gz opencv_contrib-$OPENCV_VERSION.tar.gz
+    ldconfig
 
-COPY . /opt/ORB_SLAM3/
+FROM ubuntu:18.04 as builder
 
-RUN echo "Getting ORB-SLAM 3 installation ready ..." && \
-    cd /opt/ORB_SLAM3 && \
-    ./build.sh
+# Copy the installed libraries from the base image
+COPY --from=base /usr/local /usr/local
+
+# Install necessary runtime dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential cmake apt-file git wget pkg-config \
+    libeigen3-dev \
+    libboost-thread-dev \
+    libboost-filesystem-dev \
+    libglew-dev \
+    ffmpeg \
+    libavutil-dev \
+    libpng-dev \
+    libjpeg-dev libpng-dev libtiff-dev \
+    libavcodec-dev libavformat-dev libswscale-dev libv4l-dev \
+    libxvidcore-dev libx264-dev \
+    libgtk-3-dev \
+    libatlas-base-dev gfortran \
+    libssl-dev
+
+RUN groupadd -r myuser -g 1000 && \
+    useradd -m -s /bin/bash user
+
+USER user
+
+COPY . /home/user/ORB_SLAM3/
+
+WORKDIR /home/user/ORB_SLAM3
+
+# RUN echo "Getting ORB-SLAM 3 installation ready ..." && \
+#     cd /home/user/ORB_SLAM3 && \
+#     ./build.sh
+
+# FROM ubuntu:18.04 as runner
+# TODO: can define another image here with already built ORB_SLAM3
+# Copy the installed libraries from the base image
+# COPY --from=builder /usr/local /usr/local
