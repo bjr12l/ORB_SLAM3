@@ -8,9 +8,8 @@ services:
       target: builder
     image: orb-slam3:dev
     container_name: orb-slam3-dev
-    user: "1000:1000"
     volumes:
-      - .:/home/user/ORB_SLAM3
+      - .:/opt/ORB_SLAM3
       # - /mnt/wslg:/mnt/wslg
       # - /tmp/.X11-unix:/tmp/.X11-unix
     # environment:

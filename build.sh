@@ -1,30 +1,23 @@
-echo "Configuring and building Thirdparty/DBoW2 ..."
+#!/bin/bash
 
-cd Thirdparty/DBoW2
-mkdir build
-cd build
-cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu/ ..
-make -j$(nproc)
+thirdparty_components=("DBoW2" "g2o" "Sophus")
 
-cd ../../g2o
+for component in "${thirdparty_components[@]}"; do
+  echo "Configuring and building Thirdparty/${component} ..."
 
-echo "Configuring and building Thirdparty/g2o ..."
+  cd "Thirdparty/${component}"
+  mkdir -p build
+  cd build
+  cmake -D CMAKE_BUILD_TYPE=Release ..
+  make -j$(nproc)
 
-mkdir build
-cd build
-cmake -D CMAKE_BUILD_TYPE=Release ..
-make -j$(nproc)
-
-cd ../../Sophus
-
-echo "Configuring and building Thirdparty/Sophus ..."
-
-mkdir build
-cd build
-cmake -D CMAKE_BUILD_TYPE=Release ..
-make -j$(nproc)
-
-cd ../../../
+   # Check if the current component is Sophus and install it
+  if [ "${component}" == "Sophus" ]; then
+    make install
+  fi
+  
+  cd ../../..
+done
 
 echo "Uncompress vocabulary ..."
 
@@ -36,5 +29,6 @@ echo "Configuring and building ORB_SLAM3 ..."
 
 mkdir build
 cd build
-cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu/ ..
+cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_PREFIX_PATH=/usr ..
 make -j$(nproc)
+make install

@@ -120,9 +120,9 @@ RUN apt-get update && apt-get install -y \
 
 COPY . /opt/ORB_SLAM3
 
-# RUN echo "Getting ORB-SLAM 3 installation ready ..." && \
-#     cd /opt/ORB_SLAM3 && \
-#     ./build.sh
+RUN echo "Getting ORB-SLAM 3 installation ready ..." && \
+    cd /opt/ORB_SLAM3 && \
+    ./build.sh
 
 # FROM ubuntu:18.04 as runner
 # TODO: can define another image here with already built ORB_SLAM3
