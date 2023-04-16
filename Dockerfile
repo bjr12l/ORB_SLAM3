@@ -7,11 +7,17 @@ ARG PANGOLIN_VERSION=0.8
 ARG OPENCV_VERSION=4.4.0
 
 #-> Install general dependencies
-RUN apt-get update && apt-get upgrade && \
+RUN apt-get update && apt-get upgrade -y && \
     #-> Install general usage dependencies
     echo "Installing general usage dependencies ..." && \
     apt-get install -y build-essential cmake apt-file git wget pkg-config && \
     apt-file update && \
+    #-> Install python3.8
+    apt-get install -y software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get install -y python3.8 python3.8-dev python3-pip python3-numpy && \
+    python3.8 -m pip install Cython && \
+    python3.8 -m pip install numpy && \
     #-> Install Eigen 3 last version
     #-? Needs to be installed BEFORE Pangolin as it also needs Eigen
     #-> Linear algebra library
@@ -67,6 +73,8 @@ RUN echo "Installing OpenCV dependencies ..." && \
     mkdir build && \
     cd build && \
     cmake -D CMAKE_BUILD_TYPE=RELEASE \
+          -D BUILD_PYTHON3=ON \
+          -D BUILD_OPENCV_PYTHON2=OFF \
           -D ENABLE_CXX11=ON \
           -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-$OPENCV_VERSION/modules \
           -D BUILD_TIFF=ON \
@@ -82,6 +90,7 @@ RUN echo "Installing OpenCV dependencies ..." && \
           -D WITH_VTK=OFF \
           -D BUILD_TESTS=OFF \
           -D BUILD_PERF_TESTS=OFF \
+          -D BUILD_SHARED_LIBS=ON \
           -D OPENCV_GENERATE_PKGCONFIG=ON .. && \
     make -j$(nproc) && \
     make install && \
@@ -109,17 +118,10 @@ RUN apt-get update && apt-get install -y \
     libatlas-base-dev gfortran \
     libssl-dev
 
-RUN groupadd -r myuser -g 1000 && \
-    useradd -m -s /bin/bash user
-
-USER user
-
-COPY . /home/user/ORB_SLAM3/
-
-WORKDIR /home/user/ORB_SLAM3
+COPY . /opt/ORB_SLAM3
 
 # RUN echo "Getting ORB-SLAM 3 installation ready ..." && \
-#     cd /home/user/ORB_SLAM3 && \
+#     cd /opt/ORB_SLAM3 && \
 #     ./build.sh
 
 # FROM ubuntu:18.04 as runner
