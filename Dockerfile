@@ -1,28 +1,25 @@
 # This is a Docker file to build a Docker image with ORB-SLAM 3 and all its dependencies pre-installed
 # For more info about ORB-SLAM 3 dependencies go check https://github.com/UZ-SLAMLab/ORB_SLAM3
-FROM ubuntu:18.04 as base
+FROM ubuntu:20.04 as base
 
-ARG EIGEN_VERSION=3.3.0
-ARG PANGOLIN_VERSION=0.8
-ARG OPENCV_VERSION=4.4.0
+ARG OPENCV_VERSION=4.5.1
+ARG PANGOLIN_VERSION=v0.6
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 #-> Install general dependencies
-RUN apt-get update && apt-get upgrade -y && \
+RUN apt update && \
     #-> Install general usage dependencies
     echo "Installing general usage dependencies ..." && \
-    apt-get install -y build-essential cmake apt-file git wget pkg-config && \
-    apt-file update && \
+    apt install -y build-essential cmake git wget && \
     #-> Install python3.8
-    apt-get install -y software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get install -y python3.8 python3.8-dev python3-pip python3-numpy && \
-    python3.8 -m pip install Cython && \
-    python3.8 -m pip install numpy && \
+    apt install -y python3 python3-dev python3-pip python3-numpy && \
+    pip3 install Cython && pip3 install numpy && \
     #-> Install Eigen 3 last version
     #-? Needs to be installed BEFORE Pangolin as it also needs Eigen
     #-> Linear algebra library
-    echo "Installing Eigen 3 last version ..." && \
-    apt-get install -y libeigen3-dev
+    echo "Installing Eigen 3 latests version ..." && \
+    apt install -y libeigen3-dev
 
 #-[] Install Pangolin 0.8 version
 #-? 3D Vizualisation tool
@@ -31,7 +28,7 @@ RUN apt-get update && apt-get upgrade -y && \
 RUN echo "Installing Pangolin dependencies ..." && \
     #-[] Install Pangolin dependencies
     #-? From : https://cdmana.com/2021/02/20210204202321078t.html
-    apt-get install -y \
+    apt install -y \
     libglew-dev \
     libboost-dev \
     libboost-thread-dev \
@@ -44,11 +41,13 @@ RUN echo "Installing Pangolin dependencies ..." && \
     cd opt/ && \
     git clone https://github.com/stevenlovegrove/Pangolin.git Pangolin && \
     cd Pangolin/ && \
+    git checkout ${PANGOLIN_VERSION} && \
     mkdir build && \
     cd build/ && \
     cmake -D CMAKE_BUILD_TYPE=RELEASE -D CPP11_NO_BOOST=1 .. && \
     make -j$(nproc) && \
     make install
+
 
 #-[] Install OpenCV last version
 #-? From : http://techawarey.com/programming/install-opencv-c-c-in-ubuntu-18-04-lts-step-by-step-guide/
@@ -56,7 +55,7 @@ RUN echo "Installing Pangolin dependencies ..." && \
 RUN echo "Installing OpenCV dependencies ..." && \
     #-[] Install OpenCV dependencies
     #-? From : https://learnopencv.com/install-opencv-3-4-4-on-ubuntu-18-04/
-    apt-get install -y \
+    apt install -y \
     libjpeg-dev libpng-dev libtiff-dev \
     libavcodec-dev libavformat-dev libswscale-dev libv4l-dev \
     libxvidcore-dev libx264-dev \
@@ -73,6 +72,7 @@ RUN echo "Installing OpenCV dependencies ..." && \
     mkdir build && \
     cd build && \
     cmake -D CMAKE_BUILD_TYPE=RELEASE \
+          -D CMAKE_INSTALL_PREFIX=/usr/local \
           -D BUILD_PYTHON3=ON \
           -D BUILD_OPENCV_PYTHON2=OFF \
           -D ENABLE_CXX11=ON \
@@ -91,19 +91,22 @@ RUN echo "Installing OpenCV dependencies ..." && \
           -D BUILD_TESTS=OFF \
           -D BUILD_PERF_TESTS=OFF \
           -D BUILD_SHARED_LIBS=ON \
-          -D OPENCV_GENERATE_PKGCONFIG=ON .. && \
+          -D OPENCV_GENERATE_PKGCONFIG=ON \
+          .. && \
     make -j$(nproc) && \
     make install && \
     ldconfig
 
-FROM ubuntu:18.04 as builder
+FROM ubuntu:20.04 as builder
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Copy the installed libraries from the base image
 COPY --from=base /usr/local /usr/local
 
 # Install necessary runtime dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential cmake apt-file git wget pkg-config \
+RUN apt update && apt install -y \
+    build-essential cmake \
     libeigen3-dev \
     libboost-thread-dev \
     libboost-filesystem-dev \

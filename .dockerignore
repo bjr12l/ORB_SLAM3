@@ -19,7 +19,8 @@ Thirdparty/g2o/lib/
 Vocabulary/ORBvoc.txt
 build/
 
-lib/
+**/lib/*
+**/build/*
 
 cmake_modules/
 cmake-build-debug/
