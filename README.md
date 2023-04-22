@@ -3,6 +3,7 @@
 ## K Changelog:
 - Added a Dockerfile and a VSCode dev set up (see instructions below)
 - Removed all the extra examples we dont need
+- Upgraded to use Ubuntu 20.04 and C++14, OpenCV 4.5, Python 3.8
 
 ### V1.0, December 22th, 2021
 **Authors:** Carlos Campos, Richard Elvira, Juan J. Gómez Rodríguez, [José M. M. Montiel](http://webdiis.unizar.es/~josemari/), [Juan D. Tardos](http://webdiis.unizar.es/~jdtardos/).
